@@ -1,1 +1,68 @@
 
+Setting Up and Running a FastAPI App from Your GitHub Repository
+This guide will walk you through the process of setting up and running a FastAPI app from the coderphile/assignment GitHub repository. Ensure that you have the necessary prerequisites installed before proceeding.
+
+Prerequisites:
+
+Python (3.7+)
+Git
+Pip (Python Package Manager)
+A terminal or command prompt
+
+
+Step 1: Create a Virtual Environment (Optional but Recommended)
+
+It's a good practice to create a virtual environment to isolate your project dependencies. To create a virtual environment, open your terminal and run the following command:
+
+python -m venv myenv
+
+Activate the virtual environment:
+
+On Windows:
+myenv\Scripts\activate
+
+myenv\Scripts\activate
+source myenv/bin/activate
+
+
+Step 2: Clone the Repository
+
+Clone the GitHub repository to your local machine using the following command:
+git clone https://github.com/coderphile/assignment.git
+
+
+Step 3: Navigate to the Project Directory
+
+Change your working directory to the project folder:
+cd assignment
+
+
+Step 4: Install Dependencies
+
+Install the required Python dependencies from requirements.txt:
+pip install -r requirements.txt
+
+
+Step 5: Set Up the Database
+
+Ensure that you have a PostgreSQL database up and running. You will need to configure your database connection in the alembic.ini and app/config.py files.
+
+
+Step 6: Run Migrations
+
+Run the Alembic migrations to set up the database schema:
+alembic upgrade head
+This command applies the latest database schema defined in your project.
+
+
+Step 7: Start the FastAPI Application
+
+You can start the FastAPI application using uvicorn. The following command will start the app on host 0.0.0.0 and port 8080:
+uvicorn app.main:app --host 0.0.0.0 --port 8080
+
+Your FastAPI app should now be running and accessible at http://localhost:8080.
+
+Step 8: Access the FastAPI Documentation
+
+FastAPI provides an interactive documentation system. Open your web browser and go to http://localhost:8080/docs to access the automatically generated API documentation. You can test your API endpoints and explore their functionality from this interactive interface.
+
