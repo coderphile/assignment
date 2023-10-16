@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
 from .. import models, schemas
-from math import radians, sin, cos, sqrt, atan2, degrees, asin
+from math import radians, degrees, asin, sin, cos, atan2, pi
+from sqlalchemy import cast, Float
+from geopy.distance import great_circle
 
 def get_addresses(db: Session):
     return db.query(models.Address).all()
@@ -35,44 +37,42 @@ def delete_address(db: Session, address_id: int):
         db.commit()
     return db_address
 
-def get_addresses_within_distance(db: Session, latitude: float, longitude: float, distance: float):
-    # Define the Earth's radius in kilometers
-    earth_radius = 6371.0
 
-    # Convert latitude and longitude from degrees to radians
-    lat1 = radians(latitude)
-    lon1 = radians(longitude)
+def get_addresses_within_distance(db, latitude, longitude, distance):
+    
+    try:
+        # Ensure latitude and longitude are valid numeric values
+        latitude = float(latitude)
+        longitude = float(longitude)
+        center = (latitude, longitude)
+        radius = distance  # distance in kilometers
 
-    # Calculate the maximum and minimum latitude and longitude to define a bounding box
-    d = distance / earth_radius
-    lat_max = lat1 + degrees(d)
-    lat_min = lat1 - degrees(d)
+        # Calculate min and max points
+        min_point = great_circle(kilometers=radius).destination(center, 225)
+        max_point = great_circle(kilometers=radius).destination(center, 45)
 
-    # Find the maximum and minimum longitude for the bounding box
-    delta_lon = asin(sin(d) / cos(lat1))
-    lon_max = lon1 + delta_lon
-    lon_min = lon1 - delta_lon
+        # Extract the latitude and longitude from the points
+        min_lat, min_lon = min_point.latitude, min_point.longitude
+        max_lat, max_lon = max_point.latitude, max_point.longitude
 
-    # Query the database to retrieve addresses within the bounding box
-    results = db.query(Address).filter(Address.latitude >= lat_min, Address.latitude <= lat_max, Address.longitude >= lon_min, Address.longitude <= lon_max).all()
+        # Query the database to retrieve addresses within the bounding box
+        results = db.query(models.Address).filter(
+            (cast(models.Address.latitude, Float) >= min_lat) &
+            (cast(models.Address.latitude, Float) <= max_lat) &
+            (cast(models.Address.longitude, Float) >= min_lon) &
+            (cast(models.Address.longitude, Float) <= max_lon)
+        ).all()
+        
+        # calculate the actual distance from the center to the retrieved addresses
+        addresses_within_distance = []
+        for address in results:
+            address_coordinates = (address.latitude, address.longitude)
+            dist = great_circle(center, address_coordinates).kilometers
+            if dist <= distance:
+                addresses_within_distance.append(address)
 
-    # Calculate the actual distance between the specified coordinates and the retrieved addresses
-    addresses_within_distance = []
-    for address in results:
-        # Calculate the distance using the Haversine formula
-        lat2 = radians(address.latitude)
-        lon2 = radians(address.longitude)
+        return addresses_within_distance
 
-        dlon = lon2 - lon1
-        dlat = lat2 - lat1
-
-        a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
-        c = 2 * atan2(sqrt(a), sqrt(1 - a))
-
-        # Calculate the distance in kilometers
-        distance_km = earth_radius * c
-
-        if distance_km <= distance:
-            addresses_within_distance.append(address)
-
-    return addresses_within_distance
+    except (ValueError, TypeError) as e:
+        # Handle invalid input or conversion errors here
+        return f"Invalid input or conversion error: {str(e)}"
